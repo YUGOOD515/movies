@@ -1,0 +1,570 @@
+{% extends "base.html" %}
+{% block title %}CineVault · AList 智能影视媒体库首页{% endblock %}
+
+{% block content %}
+  <!-- ===================================================================== -->
+  <!-- 1. TOP WIDESCREEN HERO BANNER CAROUSEL (横版大型海报图 + MPC-HC 播放)   -->
+  <!-- ===================================================================== -->
+  {% if featured_items %}
+  <section class="relative w-full h-[540px] sm:h-[620px] lg:h-[660px] overflow-hidden bg-black border-b border-white/10">
+    {% for hero in featured_items %}
+    <div data-hero-slide="{{ loop.index0 }}"
+         class="absolute inset-0 transition-opacity duration-700 ease-out {{ 'opacity-100 z-10' if loop.first else 'opacity-0 pointer-events-none z-0' }}">
+      <!-- Widescreen Backdrop Image -->
+      <img src="{{ hero.backdrop_url or hero.poster_url }}"
+           alt="{{ hero.title }}"
+           class="w-full h-full object-cover object-center scale-[1.02] transition-transform duration-1000" />
+      <div class="absolute inset-0 hero-vignette"></div>
+
+      <!-- Hero Content Container -->
+      <div class="relative z-20 max-w-[1440px] mx-auto h-full px-4 sm:px-8 flex flex-col justify-end pb-14 sm:pb-16">
+        <div class="max-w-2xl space-y-4">
+          <!-- Badges Row -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-wider {{ 'bg-indigo-600 text-white' if hero.media_type == 'tv' else 'bg-blue-600 text-white' }}">
+              {{ '📺 精选剧集 SERIES' if hero.media_type == 'tv' else '🎬 院线大片 MOVIE' }}
+            </span>
+            {% if hero.quality_badge %}
+            <span class="px-2.5 py-0.5 rounded-md bg-white/15 backdrop-blur-md border border-white/20 text-amber-300 text-xs font-semibold">
+              {{ hero.quality_badge }}
+            </span>
+            {% endif %}
+            {% if hero.year %}
+            <span class="px-2 py-0.5 rounded-md bg-white/10 text-slate-200 text-xs font-mono">{{ hero.year }}</span>
+            {% endif %}
+            {% if hero.ai_obfuscation_type and hero.ai_obfuscation_type != '标准命名' %}
+            <span class="px-2.5 py-0.5 rounded-md bg-purple-500/25 border border-purple-400/40 text-purple-200 text-xs font-medium"
+                  title="{{ hero.ai_explanation }}">
+              🧠 AI {{ hero.ai_obfuscation_type }}：{{ hero.raw_alist_name | truncate(22) }} ➔ {{ hero.title }}
+            </span>
+            {% endif %}
+          </div>
+
+          <!-- Official Transparent Movie / Series LOGO + Title -->
+          <div class="space-y-2">
+            {% if hero.logo_url %}
+            <img src="{{ hero.logo_url }}"
+                 alt="{{ hero.title }} LOGO"
+                 class="max-h-20 sm:max-h-28 max-w-[320px] sm:max-w-[420px] w-auto object-contain media-logo-img" />
+            <div class="flex items-center gap-3 pt-1">
+              <h2 class="text-xl sm:text-2xl font-extrabold text-white/95 tracking-tight">{{ hero.title }}</h2>
+              {% if hero.original_title and hero.original_title != hero.title %}
+              <span class="text-xs sm:text-sm text-slate-400 font-medium">{{ hero.original_title }}</span>
+              {% endif %}
+            </div>
+            {% else %}
+            <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight drop-shadow-lg">{{ hero.title }}</h1>
+            {% if hero.original_title and hero.original_title != hero.title %}
+            <p class="text-sm text-slate-300 font-medium">{{ hero.original_title }}</p>
+            {% endif %}
+            {% endif %}
+          </div>
+
+          <!-- Multi-Source Ratings Row (TMDB + MDBList: IMDb, Rotten Tomatoes, Metacritic) -->
+          <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+            {% if hero.imdb_rating %}
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold">
+              <span class="bg-amber-400 text-black px-1 rounded text-[10px] font-black">IMDb</span>
+              <span>{{ hero.imdb_rating }}</span>
+            </div>
+            {% endif %}
+            {% if hero.rt_score %}
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-200 font-bold">
+              <span>🍅 烂番茄 {{ hero.rt_score }}%</span>
+            </div>
+            {% endif %}
+            {% if hero.metacritic_score %}
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-bold">
+              <span>MC {{ hero.metacritic_score }}</span>
+            </div>
+            {% endif %}
+            {% if hero.tmdb_rating %}
+            <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-200 font-bold">
+              <span>TMDB ★ {{ "%.1f"|format(hero.tmdb_rating) }}</span>
+            </div>
+            {% endif %}
+            {% if hero.genres %}
+            <span class="text-slate-300 font-medium">{{ hero.genres }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Overview -->
+          <p class="text-slate-200/90 text-xs sm:text-sm leading-relaxed line-clamp-2 sm:line-clamp-3 max-w-xl">
+            {{ hero.overview }}
+          </p>
+
+          <!-- Action Buttons: Direct MPC-HC Play & Detail / Episode Selector -->
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            <button type="button"
+                    onclick="playWithMpcHc({{ hero.id }})"
+                    class="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/35 transition transform active:scale-95">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span>立即调用 MPC-HC 播放</span>
+              {% if hero.media_type == 'tv' %}
+              <span class="text-xs px-2 py-0.5 rounded bg-black/30 text-blue-100 font-mono">S{{ "%02d"|format(hero.current_season or hero.active_season_number or 1) }}E{{ "%02d"|format(hero.current_episode or 1) }}</span>
+              {% endif %}
+            </button>
+
+            <a href="{{ url_for('pages.media_detail', media_id=hero.id) }}"
+               class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white font-semibold text-sm transition">
+              <span>{{ '📺 选季 / 选集 / 剧照卡片' if hero.media_type == 'tv' else 'ℹ️ 影片详情与多源切换' }}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Right-side Hero Thumbnail Strip & Controls -->
+    {% if featured_items|length > 1 %}
+    <div class="hidden xl:flex flex-col gap-2.5 absolute right-8 bottom-14 z-30">
+      <div class="text-[11px] text-slate-400 uppercase tracking-wider font-semibold text-right mb-1">主页精选横版海报切换</div>
+      <div class="flex items-center gap-2.5">
+        {% for hero in featured_items %}
+        <button type="button"
+                data-hero-thumb="{{ loop.index0 }}"
+                onclick="switchHeroSlide({{ loop.index0 }})"
+                class="relative w-28 h-16 rounded-lg overflow-hidden border border-white/20 transition-all duration-300 {{ 'ring-2 ring-blue-500 scale-105 opacity-100' if loop.first else 'opacity-60 hover:opacity-90' }}">
+          <img src="{{ hero.backdrop_url or hero.poster_url }}" alt="{{ hero.title }}" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end p-1.5">
+            <span class="text-[10px] font-bold text-white truncate w-full text-left">{{ hero.title }}</span>
+          </div>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Bottom Carousel Dots -->
+    <div class="absolute bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2">
+      {% for hero in featured_items %}
+      <button type="button"
+              data-hero-dot="{{ loop.index0 }}"
+              onclick="switchHeroSlide({{ loop.index0 }})"
+              class="h-2 rounded-full transition-all duration-300 {{ 'w-8 bg-blue-500' if loop.first else 'w-2.5 bg-white/30 hover:bg-white/50' }}"></button>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  <!-- Main Content Container -->
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-8 py-10 space-y-14">
+
+    <!-- Onboarding Key Reminder Banner if any key is missing -->
+    {% if config_status and not config_status.all_ok %}
+    <div class="p-4 rounded-2xl bg-gradient-to-r from-amber-950/60 via-slate-900 to-blue-950/60 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🔑</span>
+        <div>
+          <h3 class="text-sm font-bold text-white">欢迎使用 CineVault！请完善 API 密钥以开启完整刮削与 AI 识片能力</h3>
+          <p class="text-xs text-slate-300 mt-0.5">引导配置 TMDB、MDBList 和 DeepSeek 密钥，即可自动拉取电影/剧集海报、每季海报、每集剧照与评分。</p>
+        </div>
+      </div>
+      <button type="button" onclick="openModal('keys-wizard-modal')"
+              class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shrink-0 transition">
+        立即填写密钥
+      </button>
+    </div>
+    {% endif %}
+
+    <!-- ===================================================================== -->
+    <!-- 2. CONTINUE WATCHING & PROGRESS TRACKING (主页追剧与观看进度跟踪)      -->
+    <!-- ===================================================================== -->
+    {% if continue_watching and media_filter == 'all' and not search_query %}
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2.5">
+            <span class="w-1.5 h-6 rounded-full bg-emerald-500"></span>
+            <span>继续观看 · 追剧进度跟踪</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">实时记录每一季、每一集的播放进度，支持一键唤起 MPC-HC 续播或手动标记集数</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {% for cw in continue_watching %}
+        <div class="media-card rounded-2xl bg-[#11151f] border border-white/10 overflow-hidden flex flex-col justify-between">
+          <div class="relative aspect-video bg-slate-900 overflow-hidden group">
+            <img src="{{ cw.backdrop_url or cw.poster_url }}" alt="{{ cw.title }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+            <div class="absolute inset-0 bg-gradient-to-t from-[#11151f] via-black/35 to-transparent"></div>
+
+            <!-- Top-left badge -->
+            <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+              <span class="px-2 py-0.5 rounded bg-black/75 backdrop-blur-md text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
+                {% if cw.media_type == 'tv' %}
+                  📺 第 {{ cw.current_season or 1 }} 季 · 第 {{ cw.current_episode or 1 }} 集
+                {% else %}
+                  🎬 电影进度 {{ cw.progress_percent }}%
+                {% endif %}
+              </span>
+            </div>
+
+            <!-- Movie/Series Logo Overlay -->
+            <div class="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2">
+              <div>
+                {% if cw.logo_url %}
+                <img src="{{ cw.logo_url }}" alt="{{ cw.title }}" class="max-h-9 max-w-[160px] object-contain media-logo-img mb-1" />
+                {% endif %}
+                <a href="{{ url_for('pages.media_detail', media_id=cw.id) }}" class="text-sm font-bold text-white hover:text-blue-400 line-clamp-1">
+                  {{ cw.title }}
+                </a>
+              </div>
+              <button type="button"
+                      onclick="playWithMpcHc({{ cw.id }}, {{ cw.current_season or 1 }}, {{ cw.current_episode or 1 }})"
+                      title="调用 MPC-HC 继续播放"
+                      class="w-10 h-10 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/40 shrink-0 transition">
+                ▶
+              </button>
+            </div>
+          </div>
+
+          <!-- Progress Bar & Controls -->
+          <div class="p-3.5 space-y-2.5">
+            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-300"
+                   style="width: {{ cw.progress_percent or 10 }}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span>
+                {% if cw.media_type == 'tv' %}
+                  已看 {{ cw.watched_episodes_count }} / {{ cw.total_episodes_count }} 集 ({{ cw.progress_percent }}%)
+                {% else %}
+                  已观看 {{ cw.progress_percent }}%
+                {% endif %}
+              </span>
+              <div class="flex items-center gap-1.5">
+                {% if cw.media_type == 'tv' %}
+                <button type="button"
+                        onclick="updateWatchProgress({media_id: {{ cw.id }}, action: 'next_episode'}, true)"
+                        class="px-2 py-0.5 rounded bg-white/5 hover:bg-emerald-500/20 text-slate-300 hover:text-emerald-300 border border-white/10 text-[11px] transition">
+                  +1 集已看
+                </button>
+                {% endif %}
+                <a href="{{ url_for('pages.media_detail', media_id=cw.id) }}"
+                   class="px-2 py-0.5 rounded bg-white/5 hover:bg-blue-500/20 text-blue-300 border border-white/10 text-[11px] transition">
+                  选集/详情
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- ===================================================================== -->
+    <!-- 3. TV SERIES SECTION (剧集：拥有独立 LOGO 与标题，点开可选每一季每一集) -->
+    <!-- ===================================================================== -->
+    {% if media_filter in ('all', 'tv') %}
+    <section id="tv-section" class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2.5">
+            <span class="w-1.5 h-6 rounded-full bg-indigo-500"></span>
+            <span>精选剧集专区 (TV Series)</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 font-semibold">{{ tv_series|length }} 部剧集</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">每部剧集均配备独立艺术 LOGO 与标题 · 点击任意剧集可切换每一季海报、选择每一集并查看剧照小卡片</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="{{ url_for('pages.admin_dashboard') }}#tv-admin"
+             class="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-xs text-slate-300 hover:text-white transition">
+            ⚙️ 后台切换管理剧集
+          </a>
+        </div>
+      </div>
+
+      {% if tv_series %}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5">
+        {% for show in tv_series %}
+        <div class="media-card group rounded-2xl bg-[#11151f] border border-white/10 overflow-hidden flex flex-col">
+          <!-- Poster + Series LOGO Overlay -->
+          <div class="relative aspect-[2/3] bg-slate-900 overflow-hidden">
+            <a href="{{ url_for('pages.media_detail', media_id=show.id) }}" class="block w-full h-full">
+              <img src="{{ show.poster_url or show.backdrop_url }}"
+                   alt="{{ show.title }}"
+                   loading="lazy"
+                   class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#0b0e16] via-black/25 to-transparent"></div>
+            </a>
+
+            <!-- Top Badges -->
+            <div class="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none">
+              <span class="px-2 py-0.5 rounded-md bg-indigo-600/90 backdrop-blur-md text-[10px] font-bold text-white shadow">
+                {{ show.seasons|length or 1 }} 季 · {{ show.total_episodes_count }} 集
+              </span>
+              <span class="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-amber-400 text-xs font-bold border border-amber-400/30">
+                ★ {{ "%.1f"|format(show.imdb_rating or show.tmdb_rating or 0.0) }}
+              </span>
+            </div>
+
+            <!-- AI Obfuscation Tag if decoded from netdisk -->
+            {% if show.ai_obfuscation_type and show.ai_obfuscation_type != '标准命名' %}
+            <div class="absolute top-9 left-2.5 pointer-events-none">
+              <span class="px-2 py-0.5 rounded bg-purple-600/90 text-[10px] font-semibold text-white shadow">
+                🤖 {{ show.ai_obfuscation_type }}
+              </span>
+            </div>
+            {% endif %}
+
+            <!-- Series Official Transparent LOGO + Quick Play on Bottom of Poster -->
+            <div class="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
+              <div class="min-w-0 flex-1">
+                {% if show.logo_url %}
+                <img src="{{ show.logo_url }}"
+                     alt="{{ show.title }} LOGO"
+                     class="max-h-12 max-w-[155px] w-auto object-contain media-logo-img mb-1" />
+                {% else %}
+                <span class="inline-block px-2 py-0.5 rounded bg-white/10 text-[10px] font-bold text-indigo-200 mb-1">SERIES LOGO</span>
+                {% endif %}
+              </div>
+              <button type="button"
+                      onclick="playWithMpcHc({{ show.id }})"
+                      title="使用 MPC-HC 立即播放"
+                      class="pointer-events-auto w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/40 shrink-0 transition transform hover:scale-110">
+                ▶
+              </button>
+            </div>
+          </div>
+
+          <!-- Card Footer: Series Title, Progress & Episode Selector Entry -->
+          <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <a href="{{ url_for('pages.media_detail', media_id=show.id) }}"
+                   class="font-bold text-sm sm:text-base text-white hover:text-blue-400 transition line-clamp-1"
+                   title="{{ show.title }}">
+                  {{ show.title }}
+                </a>
+                <span class="text-[11px] text-slate-400 font-mono shrink-0">{{ show.year }}</span>
+              </div>
+              <p class="text-[11px] text-slate-400 line-clamp-1 mt-0.5" title="网盘源: {{ show.raw_alist_name }}">
+                网盘源: {{ show.raw_alist_name }}
+              </p>
+            </div>
+
+            <!-- Mini Progress Bar & Action Links -->
+            <div class="space-y-1.5 pt-1 border-t border-white/5">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="text-slate-400">
+                  进度: <strong class="text-emerald-400">S{{ "%02d"|format(show.current_season or show.active_season_number or 1) }}E{{ "%02d"|format(show.current_episode or 1) }}</strong> ({{ show.progress_percent or 0 }}%)
+                </span>
+                <a href="{{ url_for('pages.media_detail', media_id=show.id) }}"
+                   class="text-blue-400 hover:text-blue-300 font-semibold">
+                  选季/选集 ➔
+                </a>
+              </div>
+              <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div class="h-full bg-indigo-500 rounded-full" style="width: {{ show.progress_percent or 5 }}%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="p-10 rounded-2xl border border-dashed border-white/10 text-center space-y-3">
+        <p class="text-slate-400 text-sm">暂未找到匹配的剧集条目</p>
+        <button type="button" onclick="openModal('add-media-modal')" class="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold">
+          ＋ 从 AList 添加剧集
+        </button>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- ===================================================================== -->
+    <!-- 4. MOVIES SECTION (电影：有名字和电影 LOGO)                           -->
+    <!-- ===================================================================== -->
+    {% if media_filter in ('all', 'movie') %}
+    <section id="movie-section" class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2.5">
+            <span class="w-1.5 h-6 rounded-full bg-blue-500"></span>
+            <span>院线电影专区 (Movies)</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 font-semibold">{{ movies_list|length }} 部电影</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">每部电影均展示电影名字与专属透明电影 LOGO · 支持一键唤起本地 MPC-HC 直连播放 4K 原盘</p>
+        </div>
+        <button type="button" onclick="openModal('add-media-modal')"
+                class="px-3.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white border border-blue-500/30 text-xs font-semibold transition">
+          ＋ 添加新电影
+        </button>
+      </div>
+
+      {% if movies_list %}
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-5">
+        {% for movie in movies_list %}
+        <div class="media-card group rounded-2xl bg-[#11151f] border border-white/10 overflow-hidden flex flex-col">
+          <!-- Movie Poster + Movie LOGO Overlay -->
+          <div class="relative aspect-[2/3] bg-slate-900 overflow-hidden">
+            <a href="{{ url_for('pages.media_detail', media_id=movie.id) }}" class="block w-full h-full">
+              <img src="{{ movie.poster_url or movie.backdrop_url }}"
+                   alt="{{ movie.title }}"
+                   loading="lazy"
+                   class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#0b0e16] via-black/25 to-transparent"></div>
+            </a>
+
+            <!-- Top Quality & Rating Badges -->
+            <div class="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none">
+              <span class="px-2 py-0.5 rounded-md bg-blue-600/90 backdrop-blur-md text-[10px] font-bold text-white shadow">
+                {{ movie.quality_badge.split('·')[0] if movie.quality_badge else '4K' }}
+              </span>
+              <span class="px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-amber-400 text-xs font-bold border border-amber-400/30">
+                ★ {{ "%.1f"|format(movie.imdb_rating or movie.tmdb_rating or 0.0) }}
+              </span>
+            </div>
+
+            {% if movie.ai_obfuscation_type and movie.ai_obfuscation_type != '标准命名' %}
+            <div class="absolute top-9 left-2.5 pointer-events-none">
+              <span class="px-2 py-0.5 rounded bg-purple-600/90 text-[10px] font-semibold text-white shadow">
+                🤖 {{ movie.ai_obfuscation_type }}
+              </span>
+            </div>
+            {% endif %}
+
+            <!-- Movie Official Transparent LOGO + Play Button -->
+            <div class="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-2 pointer-events-none">
+              <div class="min-w-0 flex-1">
+                {% if movie.logo_url %}
+                <img src="{{ movie.logo_url }}"
+                     alt="{{ movie.title }} 电影 LOGO"
+                     class="max-h-12 max-w-[155px] w-auto object-contain media-logo-img mb-1" />
+                {% else %}
+                <span class="inline-block px-2 py-0.5 rounded bg-white/15 backdrop-blur-sm text-xs font-black tracking-wider text-white mb-1">
+                  {{ movie.title }}
+                </span>
+                {% endif %}
+              </div>
+              <button type="button"
+                      onclick="playWithMpcHc({{ movie.id }})"
+                      title="调用 MPC-HC 播放电影"
+                      class="pointer-events-auto w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/40 shrink-0 transition transform hover:scale-110">
+                ▶
+              </button>
+            </div>
+          </div>
+
+          <!-- Movie Name & Multi-rating Footer -->
+          <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2">
+            <div>
+              <div class="flex items-center justify-between gap-1">
+                <a href="{{ url_for('pages.media_detail', media_id=movie.id) }}"
+                   class="font-bold text-sm sm:text-base text-white hover:text-blue-400 transition line-clamp-1"
+                   title="{{ movie.title }}">
+                  {{ movie.title }}
+                </a>
+                <span class="text-[11px] text-slate-400 font-mono shrink-0">{{ movie.year }}</span>
+              </div>
+              <p class="text-[11px] text-slate-400 line-clamp-1 mt-0.5" title="{{ movie.raw_alist_name }}">
+                {{ movie.original_title or movie.raw_alist_name }}
+              </p>
+            </div>
+
+            <div class="flex items-center justify-between text-[11px] pt-1 border-t border-white/5 text-slate-400">
+              <div class="flex items-center gap-2">
+                {% if movie.rt_score %}
+                <span class="text-rose-300">🍅 {{ movie.rt_score }}%</span>
+                {% endif %}
+                {% if movie.imdb_rating %}
+                <span class="text-amber-300">IMDb {{ movie.imdb_rating }}</span>
+                {% else %}
+                <span>TMDB {{ "%.1f"|format(movie.tmdb_rating or 0.0) }}</span>
+                {% endif %}
+              </div>
+              <button type="button"
+                      onclick="playWithMpcHc({{ movie.id }})"
+                      class="text-blue-400 hover:text-blue-300 font-semibold">
+                MPC-HC 播放
+              </button>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="p-10 rounded-2xl border border-dashed border-white/10 text-center space-y-3">
+        <p class="text-slate-400 text-sm">暂未找到匹配的电影条目</p>
+        <button type="button" onclick="openModal('add-media-modal')" class="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold">
+          ＋ 从 AList 添加电影
+        </button>
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <!-- ===================================================================== -->
+    <!-- 5. AI NETDISK NAME DE-OBFUSCATION SHOWCASE (AI 谐音/拆字/同形字还原)    -->
+    <!-- ===================================================================== -->
+    <section id="ai-showcase" class="rounded-3xl bg-gradient-to-br from-purple-950/35 via-[#11151f] to-blue-950/35 border border-purple-500/25 p-6 sm:p-8 space-y-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs font-bold">
+            <span>🧠 DeepSeek AI (`deepseek-flash` · `responses` API)</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold text-white">夸克 / 百度网盘防和谐名称 AI 智能还原看板</h2>
+          <p class="text-xs sm:text-sm text-slate-300">
+            自动识别网盘资源中常见的<strong>偏旁拆字</strong>（如 <code class="text-purple-300">虫知-虫朱-亻夹</code>）、<strong>同形/异体字</strong>（如 <code class="text-purple-300">人苼苆剨朮</code>）、<strong>同音谐音</strong>（如 <code class="text-purple-300">合力变神计划</code>）及<strong>穿插防和谐字符</strong>（如 <code class="text-purple-300">长z安z的z荔z枝</code>），精准还原真实片名并匹配 TMDB。
+          </p>
+        </div>
+
+        <!-- Live Interactive AI De-obfuscation Tester -->
+        <div class="w-full lg:w-[460px] bg-slate-950/80 p-3.5 rounded-2xl border border-white/10 space-y-2">
+          <label class="block text-xs font-semibold text-slate-300">在线测试任意网盘防和谐片名：</label>
+          <div class="flex gap-2">
+            <input id="ai-lab-input" type="text" value="虫知-虫朱-亻夹"
+                   placeholder="输入谐音/拆字/同形字片名..."
+                   class="flex-1 px-3 py-2 rounded-xl bg-slate-900 border border-white/10 text-xs sm:text-sm text-white focus:border-purple-500 focus:outline-none" />
+            <button type="button" onclick="runStandaloneAiLab()"
+                    class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shrink-0 transition">
+              AI 猜测原名
+            </button>
+          </div>
+          <div class="flex flex-wrap gap-1.5 text-[11px]">
+            <button type="button" onclick="document.getElementById('ai-lab-input').value='虫知-虫朱-亻夹'; runStandaloneAiLab();" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300">虫知-虫朱-亻夹</button>
+            <button type="button" onclick="document.getElementById('ai-lab-input').value='R 人苼苆剨朮（2025）'; runStandaloneAiLab();" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300">R 人苼苆剨朮</button>
+            <button type="button" onclick="document.getElementById('ai-lab-input').value='【合.力.变.神.计.划】'; runStandaloneAiLab();" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300">合力变神计划</button>
+            <button type="button" onclick="document.getElementById('ai-lab-input').value='破か地か獄（2024）'; runStandaloneAiLab();" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300">破か地か獄</button>
+            <button type="button" onclick="document.getElementById('ai-lab-input').value='B 百丨年孤丨独 (2024)'; runStandaloneAiLab();" class="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-slate-300">B 百丨年孤丨独</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live AI Lab Output -->
+      <div id="ai-lab-output" class="hidden p-4 rounded-2xl bg-slate-950/90 border border-purple-500/40"></div>
+
+      <!-- Decoded Items Grid from Current AList Library -->
+      {% if ai_decoded_items %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        {% for item in ai_decoded_items %}
+        <a href="{{ url_for('pages.media_detail', media_id=item.id) }}"
+           class="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-950/65 hover:bg-slate-900/90 border border-white/10 hover:border-purple-500/40 transition group">
+          <img src="{{ item.poster_url }}" alt="{{ item.title }}" class="w-12 h-16 object-cover rounded-lg shrink-0 bg-slate-800" />
+          <div class="min-w-0 flex-1 space-y-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-bold shrink-0">
+                {{ item.ai_obfuscation_type }}
+              </span>
+              <span class="text-xs text-slate-400 truncate font-mono" title="{{ item.raw_alist_name }}">
+                {{ item.raw_alist_name }}
+              </span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-emerald-400 text-xs font-bold">➔ 匹配真名:</span>
+              <span class="text-sm font-bold text-white group-hover:text-blue-400 truncate">《{{ item.title }}》</span>
+              {% if item.year %}<span class="text-xs text-slate-500">({{ item.year }})</span>{% endif %}
+            </div>
+            <p class="text-[11px] text-slate-400 line-clamp-1">{{ item.ai_explanation }}</p>
+          </div>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+
+  </div>
+{% endblock %}

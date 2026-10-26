@@ -1,0 +1,33 @@
+# Virtual environment & Python cache
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Environment variables & secrets (Never commit real keys!)
+.env
+.env.local
+
+# Local SQLite database & runtime data
+instance/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/settings.json
+
+# Agent planning files
+task_plan.md
+findings.md
+progress.md
+.planning/
+
+# OS / IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

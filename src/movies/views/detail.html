@@ -1,0 +1,556 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} ({{ item.year }}) · CineVault 影视详情{% endblock %}
+
+{% block content %}
+  <!-- ===================================================================== -->
+  <!-- TOP CINEMATIC BACKDROP HEADER WITH OFFICIAL LOGO, POSTER & RATINGS    -->
+  <!-- ===================================================================== -->
+  <section class="relative w-full min-h-[520px] lg:min-h-[580px] bg-black border-b border-white/10 overflow-hidden flex items-end">
+    <!-- Widescreen Backdrop -->
+    <div class="absolute inset-0">
+      <img src="{{ item.backdrop_url or item.poster_url }}"
+           alt="{{ item.title }}"
+           class="w-full h-full object-cover object-center opacity-65 scale-[1.01]" />
+      <div class="absolute inset-0 detail-vignette"></div>
+    </div>
+
+    <!-- Main Header Content -->
+    <div class="relative z-10 max-w-[1440px] mx-auto w-full px-4 sm:px-8 py-10 lg:py-12">
+      <div class="flex flex-col md:flex-row items-start md:items-end gap-7 lg:gap-10">
+        <!-- Main Vertical Poster (单部剧集/电影的主海报) -->
+        <div class="w-44 sm:w-56 lg:w-64 shrink-0 rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl bg-slate-900 group relative">
+          <img id="main-media-poster"
+               src="{{ item.poster_url or item.backdrop_url }}"
+               alt="{{ item.title }} 主海报"
+               class="w-full aspect-[2/3] object-cover" />
+          <div class="absolute bottom-2 left-2 right-2 px-2.5 py-1 rounded-lg bg-black/75 backdrop-blur-md text-[11px] text-center text-slate-200 font-semibold border border-white/10">
+            {{ '📺 剧集主海报 (Series Poster)' if item.media_type == 'tv' else '🎬 电影官方海报 (Movie Poster)' }}
+          </div>
+        </div>
+
+        <!-- Right Metadata, Official LOGO & Controls -->
+        <div class="flex-1 space-y-4 min-w-0">
+          <!-- Category & Quality Badges -->
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold uppercase {{ 'bg-indigo-600 text-white' if item.media_type == 'tv' else 'bg-blue-600 text-white' }}">
+              {{ '📺 剧集 TV SERIES' if item.media_type == 'tv' else '🎬 电影 MOVIE' }}
+            </span>
+            {% if item.quality_badge %}
+            <span class="px-2.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
+              {{ item.quality_badge }}
+            </span>
+            {% endif %}
+            {% if item.year %}
+            <span class="px-2.5 py-0.5 rounded-md bg-white/10 text-slate-200 text-xs font-mono">{{ item.year }}</span>
+            {% endif %}
+            {% if item.runtime %}
+            <span class="px-2.5 py-0.5 rounded-md bg-white/10 text-slate-300 text-xs">{{ item.runtime }} 分钟</span>
+            {% endif %}
+            {% if item.genres %}
+            <span class="px-2.5 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-300 text-xs">{{ item.genres }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Official Transparent LOGO + Title -->
+          <div class="space-y-2">
+            {% if item.logo_url %}
+            <img src="{{ item.logo_url }}"
+                 alt="{{ item.title }} LOGO"
+                 class="max-h-20 sm:max-h-28 max-w-[320px] sm:max-w-[440px] w-auto object-contain media-logo-img" />
+            {% endif %}
+            <div class="flex flex-wrap items-baseline gap-3">
+              <h1 class="text-2xl sm:text-4xl font-black text-white tracking-tight">{{ item.title }}</h1>
+              {% if item.original_title and item.original_title != item.title %}
+              <span class="text-sm sm:text-base text-slate-400 font-medium">{{ item.original_title }}</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Multi-Source Ratings Bar (TMDB + MDBList) -->
+          <div class="flex flex-wrap items-center gap-2.5 pt-1">
+            {% if item.imdb_rating %}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs sm:text-sm font-bold">
+              <span class="bg-amber-400 text-black px-1.5 py-0.5 rounded text-[10px] font-black">IMDb</span>
+              <span>{{ item.imdb_rating }} / 10</span>
+            </div>
+            {% endif %}
+            {% if item.rt_score %}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs sm:text-sm font-bold">
+              <span>🍅 烂番茄新鲜度 {{ item.rt_score }}%</span>
+            </div>
+            {% endif %}
+            {% if item.popcorn_score %}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/15 border border-orange-500/40 text-orange-200 text-xs sm:text-sm font-bold">
+              <span>🍿 爆米花指数 {{ item.popcorn_score }}%</span>
+            </div>
+            {% endif %}
+            {% if item.metacritic_score %}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs sm:text-sm font-bold">
+              <span>Metacritic {{ item.metacritic_score }}</span>
+            </div>
+            {% endif %}
+            {% if item.letterboxd_score %}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-500/15 border border-sky-500/40 text-sky-300 text-xs sm:text-sm font-bold">
+              <span>Letterboxd {{ item.letterboxd_score }}</span>
+            </div>
+            {% endif %}
+            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/15 border border-blue-500/40 text-blue-200 text-xs sm:text-sm font-bold">
+              <span>TMDB ★ {{ "%.1f"|format(item.tmdb_rating or 0.0) }}</span>
+            </div>
+          </div>
+
+          <!-- Synopsis -->
+          <p class="text-slate-200/90 text-xs sm:text-sm leading-relaxed max-w-3xl">
+            {{ item.overview }}
+          </p>
+
+          <!-- AI Netdisk De-obfuscation Info Card -->
+          <div class="p-3 rounded-xl bg-slate-900/80 border border-white/10 max-w-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div class="space-y-0.5 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold">
+                  🧠 AI {{ item.ai_obfuscation_type or '智能匹配' }}
+                </span>
+                <span class="text-slate-300 font-mono truncate" title="{{ item.alist_path }}">AList 路径: {{ item.alist_path }}</span>
+              </div>
+              {% if item.ai_explanation %}
+              <p class="text-slate-400 text-[11px]">{{ item.ai_explanation }}</p>
+              {% endif %}
+            </div>
+            <a href="{{ url_for('pages.admin_dashboard') }}#item-{{ item.id }}"
+               class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 shrink-0 text-center transition">
+              ⚙️ 后台切换 LOGO / 片源
+            </a>
+          </div>
+
+          <!-- Primary Play & Progress Controls -->
+          <div class="flex flex-wrap items-center gap-3 pt-2">
+            {% if item.media_type == 'tv' %}
+            <button id="hero-play-btn"
+                    type="button"
+                    onclick="playCurrentSelectedEpisode()"
+                    class="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/35 transition">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span id="hero-play-btn-label">使用 MPC-HC 播放 (第 {{ selected_season_num }} 季 · 第 {{ selected_episode_num }} 集)</span>
+            </button>
+            {% else %}
+            <button type="button"
+                    onclick="playWithMpcHc({{ item.id }})"
+                    class="inline-flex items-center gap-2.5 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-600/35 transition">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+              <span>调用 MPC-HC 立即播放正片</span>
+            </button>
+            {% endif %}
+
+            <!-- Progress Tracking Status Pill -->
+            <div class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-900/90 border border-white/15">
+              <div class="space-y-1">
+                <div id="detail-progress-label" class="text-xs font-bold text-emerald-400">
+                  {% if item.media_type == 'tv' %}
+                    追剧进度：第 {{ item.current_season or 1 }} 季 · 第 {{ item.current_episode or 1 }} 集 (已看 {{ item.watched_episodes_count }}/{{ item.total_episodes_count }} 集 · {{ item.progress_percent }}%)
+                  {% else %}
+                    观看进度：{{ item.progress_percent }}%
+                  {% endif %}
+                </div>
+                <div class="w-44 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div id="detail-progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full transition-all duration-300"
+                       style="width: {{ item.progress_percent or 5 }}%"></div>
+                </div>
+              </div>
+              {% if item.media_type == 'movie' %}
+              <button type="button"
+                      onclick="updateWatchProgress({media_id: {{ item.id }}, progress_percent: {{ 0 if item.progress_percent >= 100 else 100 }}}, true)"
+                      class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-bold transition">
+                {{ '重置未看' if item.progress_percent >= 100 else '✓ 标记已看' }}
+              </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Alternative AList Sources Switcher (if multiple netdisk folders exist for this title) -->
+          {% if item.alt_sources|length > 1 %}
+          <div class="pt-2 flex flex-wrap items-center gap-2">
+            <span class="text-xs text-slate-400 font-semibold">切换网盘版本片源:</span>
+            {% for src in item.alt_sources %}
+            <button type="button"
+                    onclick="playWithMpcHc({{ item.id }}, null, null, null, '{{ src.video_path | replace('\\', '\\\\') | replace('\'', '\\\'') }}')"
+                    class="px-3 py-1 rounded-lg bg-white/5 hover:bg-blue-600/30 border border-white/10 hover:border-blue-400 text-xs text-slate-200 transition">
+              ▶ {{ src.raw_name | truncate(34) }} ({{ src.quality_badge }})
+            </button>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- TV SERIES EXCLUSIVE: SEASON SELECTOR, SEASON POSTER, EPISODE SELECTOR & STILL CARDS -->
+  <!-- ===================================================================== -->
+  {% if item.media_type == 'tv' %}
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-8 py-10 space-y-10">
+
+    <!-- STEP 1: SEASON SELECTOR BAR (选择每一季) -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+            <span class="w-1.5 h-6 rounded-full bg-indigo-500"></span>
+            <span>第一步：选择季数 (Season Selector)</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">切换不同季数以查看该季专属海报、分集列表与每一集的高清剧照卡片</p>
+        </div>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5">
+        {% for s in seasons_data %}
+        <button type="button"
+                id="season-tab-{{ s.season_number }}"
+                onclick="selectSeason({{ s.season_number }})"
+                class="season-tab-btn px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center gap-2 {{ 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30' if s.season_number == selected_season_num else 'bg-[#11151f] border-white/10 text-slate-300 hover:border-white/30 hover:text-white' }}">
+          <span>{{ s.name }}</span>
+          <span class="px-1.5 py-0.5 rounded bg-black/30 text-[11px] font-mono">{{ s.episodes|length }} 集</span>
+        </button>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- STEP 2: SELECTED SEASON POSTER + EPISODE SELECTOR + SELECTED EPISODE STILL SPOTLIGHT -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-7 bg-[#11151f] border border-white/10 rounded-3xl p-5 sm:p-7 shadow-xl">
+      <!-- Left: Selected Season Dedicated Poster (每一季的海报 - 3 cols) -->
+      <div class="lg:col-span-3 flex flex-col sm:flex-row lg:flex-col gap-5 items-center sm:items-start">
+        <div class="w-44 sm:w-48 lg:w-full rounded-2xl overflow-hidden border border-white/15 shadow-xl bg-slate-950 relative shrink-0">
+          <img id="active-season-poster"
+               src="{{ active_season.poster_url if active_season else item.poster_url }}"
+               alt="本季海报"
+               class="w-full aspect-[2/3] object-cover transition-all duration-300" />
+          <div class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-lg bg-indigo-600/90 backdrop-blur-md text-white text-xs font-bold shadow">
+            <span id="active-season-badge">{{ active_season.name if active_season else '第 1 季' }} 海报</span>
+          </div>
+        </div>
+        <div class="space-y-1.5 text-center sm:text-left">
+          <h3 id="active-season-title" class="text-lg font-extrabold text-white">
+            {{ active_season.name if active_season else '第 1 季' }}
+          </h3>
+          <div class="flex items-center justify-center sm:justify-start gap-2 text-xs text-slate-400">
+            <span id="active-season-airdate">{{ active_season.air_date or item.year }}</span>
+            <span>·</span>
+            <span id="active-season-epcount">共 {{ active_season.episodes|length if active_season else 0 }} 集</span>
+            <span>·</span>
+            <span id="active-season-rating" class="text-amber-400 font-bold">★ {{ active_season.vote_average if active_season else item.tmdb_rating }}</span>
+          </div>
+          <p id="active-season-overview" class="text-xs text-slate-400 leading-relaxed line-clamp-4">
+            {{ (active_season.overview if active_season and active_season.overview else item.overview) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Right: Episode Number Selector + Active Episode Still Card Preview (9 cols) -->
+      <div class="lg:col-span-9 flex flex-col justify-between space-y-6">
+        <!-- Episode Number Selector Pills (选择每一集) -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>第二步：选择集数 (点击集数下方即展示对应剧照卡片)</span>
+            </h3>
+            <span class="text-xs text-slate-400">🟢 绿点表示已关联 AList 网盘视频源 · ✓ 表示已观看</span>
+          </div>
+
+          <div id="episode-pills-container" class="flex flex-wrap gap-2">
+            <!-- Populated dynamically by selectSeason() -->
+          </div>
+        </div>
+
+        <!-- Selected Episode Spotlight Card (选完每一季、每一集后展示的当前单集剧照卡片与播放控制) -->
+        <div id="selected-episode-spotlight" class="rounded-2xl bg-slate-950/90 border border-blue-500/40 overflow-hidden shadow-2xl">
+          <!-- Populated dynamically by selectEpisode() -->
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3: ALL EPISODE STILL CARDS GRID (本季全部剧集的小卡片剧照列表) -->
+    <section class="space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl font-extrabold text-white flex items-center gap-2">
+            <span class="w-1.5 h-6 rounded-full bg-blue-500"></span>
+            <span>本季分集剧照小卡片 (Episode Stills & Ratings)</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">展示每一集的高清剧照 (Still)、分集标题、单集 TMDB 评分、时长、剧情简介与 MPC-HC 一键播放</p>
+        </div>
+      </div>
+
+      <div id="episode-still-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+        {% if active_season and active_season.episodes %}
+          {% for ep in active_season.episodes %}
+          <div class="ep-still-card rounded-2xl bg-[#11151f] border border-white/10 overflow-hidden">
+            <img src="{{ ep.still_url or active_season.poster_url }}" alt="{{ ep.title }}" class="w-full aspect-video object-cover" />
+            <div class="p-3.5">
+              <h4 class="font-bold text-sm text-white">{{ ep.episode_number }}. {{ ep.title }}</h4>
+              <span class="text-xs text-amber-400">★ {{ ep.rating }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        {% endif %}
+      </div>
+    </section>
+
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if item.media_type == 'tv' %}
+<script>
+  const MEDIA_ID = {{ item.id }};
+  const MEDIA_TITLE = {{ item.title | tojson }};
+  const SERIES_SEASONS = {{ seasons_data | tojson }};
+  let currentSeasonNum = {{ selected_season_num or 1 }};
+  let currentEpisodeNum = {{ selected_episode_num or 1 }};
+
+  function getSeasonObj(seasonNum) {
+    return SERIES_SEASONS.find(s => s.season_number === Number(seasonNum)) || SERIES_SEASONS[0];
+  }
+
+  function selectSeason(seasonNum, targetEpNum = null) {
+    const season = getSeasonObj(seasonNum);
+    if (!season) return;
+    currentSeasonNum = season.season_number;
+
+    // Update season tab button styles
+    document.querySelectorAll(".season-tab-btn").forEach(btn => {
+      btn.className = "season-tab-btn px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-[#11151f] border-white/10 text-slate-300 hover:border-white/30 hover:text-white";
+    });
+    const activeTab = document.getElementById(`season-tab-${currentSeasonNum}`);
+    if (activeTab) {
+      activeTab.className = "season-tab-btn px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition flex items-center gap-2 bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/30";
+    }
+
+    // Update Season Poster & metadata
+    const posterEl = document.getElementById("active-season-poster");
+    if (posterEl && season.poster_url) posterEl.src = season.poster_url;
+    document.getElementById("active-season-badge").textContent = `${season.name} 海报`;
+    document.getElementById("active-season-title").textContent = season.name;
+    document.getElementById("active-season-airdate").textContent = season.air_date || "{{ item.year }}";
+    document.getElementById("active-season-epcount").textContent = `共 ${(season.episodes || []).length} 集`;
+    document.getElementById("active-season-rating").textContent = `★ ${season.vote_average || {{ item.tmdb_rating or 0 }}}`;
+    document.getElementById("active-season-overview").textContent = season.overview || {{ item.overview | tojson }};
+
+    const episodes = season.episodes || [];
+    if (!targetEpNum) {
+      const avail = episodes.find(e => e.alist_file_path);
+      targetEpNum = avail ? avail.episode_number : (episodes[0]?.episode_number || 1);
+    }
+
+    // Render Episode Selector Pills
+    const pillsContainer = document.getElementById("episode-pills-container");
+    if (pillsContainer) {
+      pillsContainer.innerHTML = episodes.map(ep => {
+        const hasFile = Boolean(ep.alist_file_path);
+        const watched = Boolean(ep.is_watched);
+        return `
+          <button type="button"
+                  id="ep-pill-${season.season_number}-${ep.episode_number}"
+                  data-ep-pill="${season.season_number}-${ep.episode_number}"
+                  onclick="selectEpisode(${season.season_number}, ${ep.episode_number})"
+                  class="ep-pill-btn px-3.5 py-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5">
+            ${hasFile ? `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400" title="已绑定 AList 视频源"></span>` : ""}
+            <span>第 ${ep.episode_number} 集</span>
+            ${watched ? `<span class="text-emerald-300 text-[10px]">✓</span>` : ""}
+          </button>
+        `;
+      }).join("");
+    }
+
+    // Render All Episode Still Small Cards Grid (小卡片的剧照)
+    const gridEl = document.getElementById("episode-still-cards-grid");
+    if (gridEl) {
+      gridEl.innerHTML = episodes.map(ep => {
+        const hasFile = Boolean(ep.alist_file_path);
+        return `
+          <div id="ep-card-${season.season_number}-${ep.episode_number}"
+               onclick="selectEpisode(${season.season_number}, ${ep.episode_number})"
+               class="ep-still-card group rounded-2xl bg-[#11151f] border border-white/10 overflow-hidden flex flex-col justify-between cursor-pointer transition hover:border-blue-400">
+            <!-- 16:9 Episode Still Image (每一集的剧照) -->
+            <div class="relative aspect-video bg-slate-900 overflow-hidden">
+              <img src="${ep.still_url || season.poster_url}"
+                   alt="${ep.title}"
+                   loading="lazy"
+                   class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+              <div class="absolute inset-0 bg-gradient-to-t from-[#11151f] via-transparent to-black/30"></div>
+
+              <!-- Top Left Episode Number & File Badge -->
+              <div class="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                <span class="px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-white text-xs font-bold font-mono">
+                  S${String(season.season_number).padStart(2, '0')}E${String(ep.episode_number).padStart(2, '0')}
+                </span>
+                ${hasFile ? `<span class="px-2 py-0.5 rounded-md bg-emerald-600/90 text-white text-[10px] font-bold">可播放 ${ep.file_size_human || ''}</span>` : ""}
+              </div>
+
+              <!-- Top Right Episode Rating (每集的评分) -->
+              <div class="absolute top-2.5 right-2.5">
+                <span class="px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-amber-400 text-xs font-bold border border-amber-400/30">
+                  ★ ${ep.rating || '8.5'}
+                </span>
+              </div>
+
+              <!-- Play Button Overlay -->
+              <button type="button"
+                      onclick="event.stopPropagation(); playWithMpcHc(${MEDIA_ID}, ${season.season_number}, ${ep.episode_number}, ${ep.id})"
+                      title="使用 MPC-HC 播放本集"
+                      class="absolute bottom-2.5 right-2.5 w-9 h-9 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-600/40 transition transform hover:scale-110">
+                ▶
+              </button>
+            </div>
+
+            <!-- Still Card Body: Episode Title, Overview & Progress Toggle -->
+            <div class="p-3.5 flex-1 flex flex-col justify-between space-y-2.5">
+              <div>
+                <h4 class="font-bold text-sm text-white group-hover:text-blue-400 transition line-clamp-1" title="${ep.title}">
+                  ${ep.episode_number}. ${ep.title}
+                </h4>
+                <div class="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                  ${ep.air_date ? `<span>📅 ${ep.air_date}</span>` : ""}
+                  ${ep.runtime ? `<span>⏱ ${ep.runtime} 分钟</span>` : ""}
+                </div>
+                <p class="text-xs text-slate-400 line-clamp-2 mt-1.5 leading-relaxed">
+                  ${ep.overview || "本集暂无详细文字简介。"}
+                </p>
+              </div>
+
+              <div class="pt-2 border-t border-white/5 flex items-center justify-between text-xs">
+                <button type="button"
+                        onclick="event.stopPropagation(); toggleEpisodeWatched(${season.season_number}, ${ep.episode_number}, ${ep.id})"
+                        class="px-2.5 py-1 rounded-lg border text-[11px] font-medium transition ${ep.is_watched ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 'bg-white/5 border-white/10 text-slate-300 hover:text-white'}">
+                  ${ep.is_watched ? '✓ 已观看' : '○ 标记已看'}
+                </button>
+                <button type="button"
+                        onclick="event.stopPropagation(); playWithMpcHc(${MEDIA_ID}, ${season.season_number}, ${ep.episode_number}, ${ep.id})"
+                        class="text-blue-400 hover:text-blue-300 font-bold">
+                  MPC-HC 播放 ➔
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    selectEpisode(season.season_number, targetEpNum);
+  }
+
+  function selectEpisode(seasonNum, episodeNum) {
+    const season = getSeasonObj(seasonNum);
+    if (!season) return;
+    const ep = (season.episodes || []).find(e => e.episode_number === Number(episodeNum)) || season.episodes[0];
+    if (!ep) return;
+
+    currentSeasonNum = season.season_number;
+    currentEpisodeNum = ep.episode_number;
+
+    // Highlight active pill
+    document.querySelectorAll(".ep-pill-btn").forEach(btn => {
+      btn.className = "ep-pill-btn px-3.5 py-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 bg-slate-900 border-white/10 text-slate-300 hover:border-blue-400 hover:text-white";
+    });
+    const activePill = document.getElementById(`ep-pill-${seasonNum}-${episodeNum}`);
+    if (activePill) {
+      activePill.className = "ep-pill-btn px-3.5 py-2 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-600/30";
+    }
+
+    // Highlight active still card
+    document.querySelectorAll(".ep-still-card").forEach(c => c.classList.remove("active"));
+    const activeCard = document.getElementById(`ep-card-${seasonNum}-${episodeNum}`);
+    if (activeCard) activeCard.classList.add("active");
+
+    // Update top hero play button text
+    const heroBtnLabel = document.getElementById("hero-play-btn-label");
+    if (heroBtnLabel) {
+      heroBtnLabel.textContent = `使用 MPC-HC 播放 (第 ${seasonNum} 季 · 第 ${episodeNum} 集: ${ep.title})`;
+    }
+
+    // Render Selected Episode Spotlight Card
+    const spotlight = document.getElementById("selected-episode-spotlight");
+    if (spotlight) {
+      spotlight.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-0">
+          <!-- Episode Still Image (剧照) -->
+          <div class="md:col-span-5 relative aspect-video md:aspect-auto bg-slate-900 overflow-hidden">
+            <img src="${ep.still_url || season.poster_url}"
+                 alt="${ep.title} 剧照"
+                 class="w-full h-full object-cover" />
+            <div class="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/80 backdrop-blur-md text-xs font-bold text-blue-300 border border-blue-500/30">
+              当前选定剧照 · S${String(seasonNum).padStart(2, '0')}E${String(episodeNum).padStart(2, '0')}
+            </div>
+          </div>
+
+          <!-- Episode Info & Play Actions -->
+          <div class="md:col-span-7 p-5 flex flex-col justify-between space-y-4">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="px-2.5 py-0.5 rounded bg-blue-600 text-white text-xs font-bold">第 ${seasonNum} 季 · 第 ${episodeNum} 集</span>
+                  <h4 class="text-lg font-extrabold text-white">${ep.title}</h4>
+                </div>
+                <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
+                  单集评分 ★ ${ep.rating || '8.5'}
+                </span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                ${ep.air_date ? `<span>📅 播出日期: ${ep.air_date}</span>` : ""}
+                ${ep.runtime ? `<span>⏱ 单集时长: ${ep.runtime} 分钟</span>` : ""}
+                ${ep.file_name ? `<span class="text-emerald-400 font-mono truncate max-w-xs" title="${ep.alist_file_path}">🎞️ 网盘文件: ${ep.file_name} (${ep.file_size_human})</span>` : `<span class="text-amber-400">⚠️ 当前集暂未匹配独立文件，将播放剧集默认源</span>`}
+              </div>
+
+              <p class="text-xs sm:text-sm text-slate-200 leading-relaxed pt-1">
+                ${ep.overview || "本集暂无详细剧集简介。点击下方按钮即可调用本地 MPC-HC 播放器直接观看。"}
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-white/10">
+              <button type="button"
+                      onclick="playWithMpcHc(${MEDIA_ID}, ${seasonNum}, ${episodeNum}, ${ep.id})"
+                      class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-600/30 transition">
+                <span>▶ 调用 MPC-HC 播放本集</span>
+              </button>
+              <button type="button"
+                      onclick="toggleEpisodeWatched(${seasonNum}, ${episodeNum}, ${ep.id})"
+                      class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-emerald-500/20 border border-white/10 text-xs font-semibold text-slate-200 hover:text-emerald-300 transition">
+                ${ep.is_watched ? '✓ 已标记观看 (点击取消)' : '○ 标记本集已观看'}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  function playCurrentSelectedEpisode() {
+    playWithMpcHc(MEDIA_ID, currentSeasonNum, currentEpisodeNum);
+  }
+
+  async function toggleEpisodeWatched(seasonNum, episodeNum, epId) {
+    const data = await updateWatchProgress({
+      media_id: MEDIA_ID,
+      season_number: seasonNum,
+      episode_number: episodeNum,
+      episode_id: epId,
+    });
+    if (data && data.episode) {
+      const season = getSeasonObj(seasonNum);
+      if (season) {
+        const ep = (season.episodes || []).find(e => e.episode_number === Number(episodeNum));
+        if (ep) ep.is_watched = data.episode.is_watched;
+      }
+      markEpisodeWatchedUI(seasonNum, episodeNum, data.media);
+      selectSeason(seasonNum, episodeNum);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    selectSeason(currentSeasonNum, currentEpisodeNum);
+  });
+</script>
+{% endif %}
+{% endblock %}

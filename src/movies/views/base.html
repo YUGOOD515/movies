@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}CineVault · AList 智能影视媒体库{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            vault: {
+              bg: '#090b10',
+              card: '#11151f',
+              border: '#1e2638',
+              accent: '#3b82f6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+</head>
+<body class="min-h-screen flex flex-col bg-[#090b10] text-slate-100 selection:bg-blue-600 selection:text-white">
+
+  <!-- Sticky Top Navigation Bar -->
+  <header class="sticky top-0 z-40 border-b border-white/10 bg-[#090b10]/85 backdrop-blur-xl">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between gap-4">
+      <!-- Brand -->
+      <div class="flex items-center gap-7">
+        <a href="{{ url_for('pages.index') }}" class="flex items-center gap-2.5 group">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/25 font-black text-white text-lg">
+            CV
+          </div>
+          <div>
+            <span class="font-extrabold tracking-tight text-lg text-white group-hover:text-blue-400 transition">CineVault</span>
+            <span class="hidden sm:inline-block ml-1.5 text-[11px] px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-500/30 text-blue-300 font-medium">AList · AI 智影库</span>
+          </div>
+        </a>
+
+        <!-- Nav Links -->
+        <nav class="hidden lg:flex items-center gap-1 text-sm font-medium">
+          <a href="{{ url_for('pages.index') }}"
+             class="px-3.5 py-2 rounded-lg transition {{ 'bg-white/10 text-white' if request.path == '/' and request.args.get('type', 'all') == 'all' else 'text-slate-300 hover:text-white hover:bg-white/5' }}">
+            首页总览
+          </a>
+          <a href="{{ url_for('pages.index', type='tv') }}"
+             class="px-3.5 py-2 rounded-lg transition {{ 'bg-white/10 text-white' if request.args.get('type') == 'tv' else 'text-slate-300 hover:text-white hover:bg-white/5' }}">
+            📺 剧集专区
+          </a>
+          <a href="{{ url_for('pages.index', type='movie') }}"
+             class="px-3.5 py-2 rounded-lg transition {{ 'bg-white/10 text-white' if request.args.get('type') == 'movie' else 'text-slate-300 hover:text-white hover:bg-white/5' }}">
+            🎬 电影院线
+          </a>
+          <a href="{{ url_for('pages.index') }}#ai-showcase"
+             class="px-3.5 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 transition">
+            🧠 AI 谐音/拆字还原
+          </a>
+          <a href="{{ url_for('pages.admin_dashboard') }}"
+             class="px-3.5 py-2 rounded-lg transition {{ 'bg-white/10 text-white' if request.path.startswith('/admin') else 'text-slate-300 hover:text-white hover:bg-white/5' }}">
+            ⚙️ 后台切换管理
+          </a>
+        </nav>
+      </div>
+
+      <!-- Right Search & Actions -->
+      <div class="flex items-center gap-2.5">
+        <form action="{{ url_for('pages.index') }}" method="get" class="relative hidden sm:block">
+          <input type="text"
+                 name="q"
+                 value="{{ search_query or '' }}"
+                 placeholder="搜片名 / 原盘名 / 谐音拆字..."
+                 class="w-48 xl:w-64 pl-9 pr-3 py-1.5 rounded-xl bg-slate-900/90 border border-white/10 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 103.5 10.5a7.5 7.5 0 0013.15 6.15z" />
+          </svg>
+        </form>
+
+        <!-- Add Movie / Series Button -->
+        <button type="button"
+                onclick="openModal('add-media-modal')"
+                class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-semibold shadow-lg shadow-blue-600/25 transition">
+          <span>＋ 添加影视</span>
+        </button>
+
+        <!-- Guided API Key Wizard Button -->
+        <button type="button"
+                onclick="openModal('keys-wizard-modal')"
+                class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/15 text-slate-200 text-xs sm:text-sm font-medium transition">
+          <span class="w-2 h-2 rounded-full {{ 'bg-emerald-400 shadow-[0_0_8px_#34d399]' if config_status and config_status.all_ok else 'bg-amber-400 animate-ping' }}"></span>
+          <span>密钥配置向导</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/10 bg-[#07090d] py-8 mt-16">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div class="flex items-center gap-3">
+        <span class="font-bold text-slate-200">CineVault · AList 智能影视管理系统</span>
+        <span>|</span>
+        <span>MVC + Connector 架构 (Flask · Jinja2 · Tailwind · DeepSeek AI · TMDB · MDBList)</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span>本地播放器: <code class="text-blue-400">C:\Program Files\MPC-HC\mpc-hc64.exe</code></span>
+        <a href="{{ url_for('pages.settings_page') }}" class="text-slate-300 hover:text-white underline">API 密钥设置</a>
+        <a href="{{ url_for('pages.admin_dashboard') }}" class="text-slate-300 hover:text-white underline">后台管理</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 1: 引导用户填写 TMDB、MDBList、DeepSeek 与 AList 密钥向导        -->
+  <!-- ===================================================================== -->
+  <div id="keys-wizard-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+    <div class="w-full max-w-3xl rounded-2xl bg-[#10141f] border border-white/15 shadow-2xl overflow-hidden my-8">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-blue-950/60 via-slate-900 to-purple-950/60">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>🔑</span>
+            <span>数据服务与 AI 密钥配置引导向导</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">按步骤配置 TMDB（海报/剧照/LOGO）、MDBList（多平台评分）、DeepSeek（网盘谐音/拆字识别）与 AList 数据源</p>
+        </div>
+        <button type="button" onclick="closeModal('keys-wizard-modal')" class="text-slate-400 hover:text-white text-xl px-2">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+        <!-- Step 1: TMDB -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-blue-600 text-white text-xs font-bold">步骤 1</span>
+              <h4 class="font-bold text-white text-sm">TMDB 密钥 (获取电影/剧集海报、每季海报、每集剧照、专属 LOGO)</h4>
+            </div>
+            <button type="button" onclick="testConnector('tmdb', 'cfg-', 'wiz-status-tmdb')" class="px-2.5 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs font-medium transition">
+              测试 TMDB
+            </button>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">TMDB Read Access Token (Bearer) 或 API Key</label>
+            <input id="cfg-TMDB_TOKEN" type="text" value="{{ settings.get('TMDB_TOKEN', '') if settings else '' }}"
+                   placeholder="eyJhbGciOiJIUzI1NiJ9..."
+                   class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100 focus:border-blue-500 focus:outline-none" />
+          </div>
+          <div id="wiz-status-tmdb" class="text-xs text-slate-400">支持自动抓取剧集每季独立海报、每集高清剧照 (Still) 与透明 PNG 艺术字 LOGO。</div>
+        </div>
+
+        <!-- Step 2: MDBList -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-amber-600 text-white text-xs font-bold">步骤 2</span>
+              <h4 class="font-bold text-white text-sm">MDBList 密钥 (聚合 IMDb、烂番茄、Metacritic、Letterboxd 权威评分)</h4>
+            </div>
+            <button type="button" onclick="testConnector('mdblist', 'cfg-', 'wiz-status-mdblist')" class="px-2.5 py-1 rounded-lg bg-amber-600/20 hover:bg-amber-600 text-amber-300 hover:text-white text-xs font-medium transition">
+              测试 MDBList
+            </button>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">MDBLIST_APIKEY</label>
+            <input id="cfg-MDBLIST_APIKEY" type="text" value="{{ settings.get('MDBLIST_APIKEY', '') if settings else '' }}"
+                   placeholder="请输入 MDBList API Key..."
+                   class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100 focus:border-blue-500 focus:outline-none" />
+          </div>
+          <div id="wiz-status-mdblist" class="text-xs text-slate-400">用于同步 IMDb、Rotten Tomatoes 烂番茄新鲜度/爆米花指数与 Metacritic 评分。</div>
+        </div>
+
+        <!-- Step 3: DeepSeek AI -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-purple-600 text-white text-xs font-bold">步骤 3</span>
+              <h4 class="font-bold text-white text-sm">DeepSeek AI 密钥 (网盘谐音、拆字、同形字防和谐名称智能还原)</h4>
+            </div>
+            <button type="button" onclick="testConnector('llm', 'cfg-', 'wiz-status-llm')" class="px-2.5 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white text-xs font-medium transition">
+              测试 DeepSeek 识片
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">LLM_BASE_URL</label>
+              <input id="cfg-LLM_BASE_URL" type="text" value="{{ settings.get('LLM_BASE_URL', 'https://api.deepseek.com') if settings else 'https://api.deepseek.com' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">LLM_API_KEY</label>
+              <input id="cfg-LLM_API_KEY" type="password" value="{{ settings.get('LLM_API_KEY', '') if settings else '' }}"
+                     placeholder="sk-..."
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">LLM_MODEL</label>
+              <input id="cfg-LLM_MODEL" type="text" value="{{ settings.get('LLM_MODEL', 'deepseek-flash') if settings else 'deepseek-flash' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">LLM_API 协议模式</label>
+              <select id="cfg-LLM_API" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100">
+                <option value="responses" {{ 'selected' if not settings or settings.get('LLM_API') == 'responses' else '' }}>responses (/responses)</option>
+                <option value="chat" {{ 'selected' if settings and settings.get('LLM_API') == 'chat' else '' }}>chat (/chat/completions)</option>
+              </select>
+            </div>
+          </div>
+          <div id="wiz-status-llm" class="text-xs text-slate-400">支持将「虫知-虫朱-亻夹」还原为《蜘蛛侠》、「人苼苆剨朮」还原为《人生切割术》、「合力变神计划」还原为《河狸变身计划》。</div>
+        </div>
+
+        <!-- Step 4: AList & Local Player -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-emerald-600 text-white text-xs font-bold">步骤 4</span>
+              <h4 class="font-bold text-white text-sm">AList 网盘服务 (C:\alist) 与本地播放器 (MPC-HC)</h4>
+            </div>
+            <div class="flex gap-2">
+              <button type="button" onclick="testConnector('alist', 'cfg-', 'wiz-status-alist')" class="px-2.5 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-medium transition">
+                测试 AList
+              </button>
+              <button type="button" onclick="testConnector('player', 'cfg-', 'wiz-status-alist')" class="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-medium transition">
+                检测 MPC-HC
+              </button>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">ALIST_URL</label>
+              <input id="cfg-ALIST_URL" type="text" value="{{ settings.get('ALIST_URL', 'http://localhost:5244') if settings else 'http://localhost:5244' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">ALIST_USERNAME</label>
+              <input id="cfg-ALIST_USERNAME" type="text" value="{{ settings.get('ALIST_USERNAME', 'admin') if settings else 'admin' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">ALIST_PASSWORD</label>
+              <input id="cfg-ALIST_PASSWORD" type="password" value="{{ settings.get('ALIST_PASSWORD', '') if settings else '' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">默认扫描网盘路径 (ALIST_SCAN_PATH)</label>
+              <input id="cfg-ALIST_SCAN_PATH" type="text" value="{{ settings.get('ALIST_SCAN_PATH', '/Quark/来自：分享') if settings else '/Quark/来自：分享' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-400 mb-1">MPC-HC 64位播放器路径 (MPC_HC_PATH)</label>
+              <input id="cfg-MPC_HC_PATH" type="text" value="{{ settings.get('MPC_HC_PATH', 'C:\\Program Files\\MPC-HC\\mpc-hc64.exe') if settings else 'C:\\Program Files\\MPC-HC\\mpc-hc64.exe' }}"
+                     class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+            </div>
+          </div>
+          <div id="wiz-status-alist" class="text-xs text-slate-400">本地 AList 安装目录：C:\alist · 默认挂载夸克网盘 /Quark/来自：分享。</div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-4 border-t border-white/10 bg-slate-950/80 flex flex-wrap items-center justify-between gap-3">
+        <button type="button" onclick="testConnector('all', 'cfg-', 'wiz-status-alist')" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition">
+          ⚡ 一键测试全部连接
+        </button>
+        <div class="flex items-center gap-2.5">
+          <button type="button" onclick="closeModal('keys-wizard-modal')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium">
+            关闭
+          </button>
+          <button type="button" onclick="saveSettingsForm('cfg-', true)" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">
+            💾 保存全部密钥配置
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- MODAL 2: 添加电影/剧集 & AList 网盘浏览 + AI 谐音/拆字识片向导          -->
+  <!-- ===================================================================== -->
+  <div id="add-media-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+    <div class="w-full max-w-5xl rounded-2xl bg-[#10141f] border border-white/15 shadow-2xl overflow-hidden my-8">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-gradient-to-r from-slate-900 via-blue-950/50 to-slate-900">
+        <div>
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>🎬</span>
+            <span>添加电影 / 剧集（支持 AList 网盘浏览 & DeepSeek AI 字形还原）</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">从 AList 选择夸克/百度网盘目录，AI 自动还原谐音/拆字/同形字并拉取 TMDB 海报、剧照、LOGO 与 MDBList 评分</p>
+        </div>
+        <button type="button" onclick="closeModal('add-media-modal')" class="text-slate-400 hover:text-white text-xl px-2">✕</button>
+      </div>
+
+      <!-- Body -->
+      <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-h-[78vh] overflow-y-auto">
+        <!-- Left Column: AList Directory Browser (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col border border-white/10 rounded-xl bg-slate-950/70 overflow-hidden">
+          <div class="p-3 bg-slate-900/90 border-b border-white/10 flex items-center gap-2">
+            <span class="text-xs font-bold text-blue-400 shrink-0">AList 路径:</span>
+            <input id="alist-browser-path" type="text" value="{{ settings.get('ALIST_SCAN_PATH', '/Quark/来自：分享') if settings else '/Quark/来自：分享' }}"
+                   class="flex-1 bg-slate-950 border border-white/10 rounded-lg px-2.5 py-1 text-xs font-mono text-slate-200" />
+            <button type="button" onclick="loadAlistDirectory(document.getElementById('alist-browser-path').value)"
+                    class="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shrink-0">
+              前往
+            </button>
+          </div>
+          <div id="alist-browser-list" class="flex-1 max-h-[380px] overflow-y-auto divide-y divide-white/5 p-1.5"></div>
+          <div class="p-3 bg-slate-900/60 border-t border-white/10 flex items-center justify-between gap-2">
+            <input id="batch-scan-path" type="hidden" value="{{ settings.get('ALIST_SCAN_PATH', '/Quark/来自：分享') if settings else '/Quark/来自：分享' }}" />
+            <span class="text-[11px] text-slate-400">想要批量导入网盘全部影视？</span>
+            <button type="button" onclick="triggerBatchScan(this)"
+                    class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
+              🚀 一键智能扫描 AList 网盘
+            </button>
+          </div>
+        </div>
+
+        <!-- Right Column: AI Recognition & TMDB Candidate Selection (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="p-4 rounded-xl bg-slate-900/70 border border-white/10 space-y-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">选定的 AList 视频/目录路径</label>
+                <input id="add-alist-path" type="text" placeholder="/Quark/来自：分享/..."
+                       class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-200" />
+              </div>
+              <div>
+                <label class="block text-xs text-slate-400 mb-1">网盘原始名称 / 搜索词 (支持拆字、同形字、谐音)</label>
+                <div class="flex gap-2">
+                  <input id="add-raw-name" type="text" placeholder="例如：虫知-虫朱-亻夹 / 人苼苆剨朮"
+                         class="flex-1 px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs text-slate-100" />
+                  <button type="button" onclick="runAiGuessForAddModal()"
+                          class="px-3 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shrink-0 transition">
+                    🤖 AI 识片
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick preset examples for testing AI de-obfuscation -->
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <span class="text-[11px] text-slate-400">点击测试网盘防和谐名:</span>
+              <button type="button" onclick="document.getElementById('add-raw-name').value='虫知-虫朱-亻夹'; document.getElementById('add-alist-path').value='/Quark/来自：分享/虫知-虫朱-亻夹'; runAiGuessForAddModal();"
+                      class="text-[11px] px-2 py-0.5 rounded bg-white/5 hover:bg-purple-500/20 text-slate-300 border border-white/10">虫知-虫朱-亻夹 (拆字)</button>
+              <button type="button" onclick="document.getElementById('add-raw-name').value='R 人苼苆剨朮（2025）[10集全] 4K HDR'; document.getElementById('add-alist-path').value='/Quark/来自：分享/R 人苼苆剨朮（2025）[10集全] 4K HDR'; runAiGuessForAddModal();"
+                      class="text-[11px] px-2 py-0.5 rounded bg-white/5 hover:bg-purple-500/20 text-slate-300 border border-white/10">人苼苆剨朮 (同形字)</button>
+              <button type="button" onclick="document.getElementById('add-raw-name').value='【合.力.变.神.计.划】'; document.getElementById('add-alist-path').value='/Quark/来自：分享/【合.力.变.神.计.划】4K.UHD蓝光原盘REMUX 杜比视界 国粤台英4音轨 内封精修简英双语&国配简中特效sup字幕 年糕封装'; runAiGuessForAddModal();"
+                      class="text-[11px] px-2 py-0.5 rounded bg-white/5 hover:bg-purple-500/20 text-slate-300 border border-white/10">合力变神计划 (谐音)</button>
+              <button type="button" onclick="document.getElementById('add-raw-name').value='长z安z的z荔z枝 (2025)'; document.getElementById('add-alist-path').value='/Quark/来自：分享/长z安z的z荔z枝 (2025) 4K 高码 60帧'; runAiGuessForAddModal();"
+                      class="text-[11px] px-2 py-0.5 rounded bg-white/5 hover:bg-purple-500/20 text-slate-300 border border-white/10">长z安z的z荔z枝 (穿插符)</button>
+            </div>
+
+            <!-- AI Guess Output Box -->
+            <div id="ai-guess-result-box" class="hidden p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/30"></div>
+          </div>
+
+          <!-- Hidden selected TMDB inputs -->
+          <input type="hidden" id="add-selected-tmdb-id" value="" />
+          <input type="hidden" id="add-selected-media-type" value="" />
+
+          <!-- TMDB Candidates Grid -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold text-slate-300">TMDB 匹配候选结果 (点击选择准确条目):</span>
+            </div>
+            <div id="tmdb-candidates-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[240px] overflow-y-auto pr-1">
+              <div class="col-span-full text-center py-8 text-slate-500 text-xs border border-dashed border-white/10 rounded-xl">
+                从左侧选定 AList 目录或点击「🤖 AI 识片」后，此处将展示匹配的 TMDB 影视海报与详情
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="px-6 py-4 border-t border-white/10 bg-slate-950/80 flex items-center justify-between">
+        <button type="button" onclick="openModal('keys-wizard-modal')" class="text-xs text-blue-400 hover:underline">
+          🔑 需要修改 TMDB / MDBList / DeepSeek 密钥？点击配置
+        </button>
+        <div class="flex items-center gap-3">
+          <button type="button" onclick="closeModal('add-media-modal')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium">
+            取消
+          </button>
+          <button id="btn-submit-add-media" type="button" onclick="submitAddMedia()"
+                  class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">
+            立即导入至影视库
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-md"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}API 密钥配置向导 · CineVault AList 智影库{% endblock %}
+
+{% block content %}
+  <div class="max-w-4xl mx-auto px-4 sm:px-8 py-12 space-y-8">
+    <div class="space-y-2">
+      <span class="px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 text-xs font-bold">
+        🔑 Guided Setup Wizard · 密钥与播放器配置向导
+      </span>
+      <h1 class="text-2xl sm:text-3xl font-extrabold text-white">填写并测试 TMDB、MDBList、DeepSeek 与 AList 密钥</h1>
+      <p class="text-sm text-slate-400">
+        系统通过 Connector 层连接各大元数据服务与本地播放器。您可以在下方逐项填写密钥并点击「测试连接」验证。
+      </p>
+    </div>
+
+    <div class="space-y-6">
+      <!-- 1. TMDB -->
+      <div class="p-6 rounded-2xl bg-[#11151f] border border-white/10 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">1. TMDB (The Movie Database) 密钥</h2>
+            <p class="text-xs text-slate-400">用于获取单部剧集/电影海报、每一季的海报、每一集的剧照 (Still)、分集标题评分以及透明 LOGO</p>
+          </div>
+          <button type="button" onclick="testConnector('tmdb', 'page-cfg-', 'page-status-tmdb')"
+                  class="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
+            测试 TMDB 连接
+          </button>
+        </div>
+        <input id="page-cfg-TMDB_TOKEN" type="text" value="{{ settings.get('TMDB_TOKEN', '') }}"
+               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+        <div id="page-status-tmdb" class="text-xs text-slate-400">状态：{{ '✅ 已填写密钥' if config_status.tmdb_ok else '⚠️ 未填写' }}</div>
+      </div>
+
+      <!-- 2. MDBList -->
+      <div class="p-6 rounded-2xl bg-[#11151f] border border-white/10 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">2. MDBList 评分聚合密钥</h2>
+            <p class="text-xs text-slate-400">用于获取 IMDb、烂番茄 (Rotten Tomatoes)、Metacritic、Letterboxd、Trakt 多平台评分</p>
+          </div>
+          <button type="button" onclick="testConnector('mdblist', 'page-cfg-', 'page-status-mdblist')"
+                  class="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition">
+            测试 MDBList 连接
+          </button>
+        </div>
+        <input id="page-cfg-MDBLIST_APIKEY" type="text" value="{{ settings.get('MDBLIST_APIKEY', '') }}"
+               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+        <div id="page-status-mdblist" class="text-xs text-slate-400">状态：{{ '✅ 已填写密钥' if config_status.mdblist_ok else '⚠️ 未填写' }}</div>
+      </div>
+
+      <!-- 3. DeepSeek AI -->
+      <div class="p-6 rounded-2xl bg-[#11151f] border border-white/10 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">3. DeepSeek AI 大模型密钥</h2>
+            <p class="text-xs text-slate-400">针对夸克/百度网盘防和谐名称（谐音、同形字、偏旁拆字、穿插字母符号）进行智能推理还原</p>
+          </div>
+          <button type="button" onclick="testConnector('llm', 'page-cfg-', 'page-status-llm')"
+                  class="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition">
+            测试 DeepSeek AI
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">LLM_BASE_URL</label>
+            <input id="page-cfg-LLM_BASE_URL" type="text" value="{{ settings.get('LLM_BASE_URL', 'https://api.deepseek.com') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">LLM_API_KEY</label>
+            <input id="page-cfg-LLM_API_KEY" type="text" value="{{ settings.get('LLM_API_KEY', '') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">LLM_MODEL</label>
+            <input id="page-cfg-LLM_MODEL" type="text" value="{{ settings.get('LLM_MODEL', 'deepseek-flash') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">LLM_API</label>
+            <input id="page-cfg-LLM_API" type="text" value="{{ settings.get('LLM_API', 'responses') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+        </div>
+        <div id="page-status-llm" class="text-xs text-slate-400">状态：{{ '✅ 已填写密钥' if config_status.llm_ok else '⚠️ 未填写' }}</div>
+      </div>
+
+      <!-- 4. AList & MPC-HC -->
+      <div class="p-6 rounded-2xl bg-[#11151f] border border-white/10 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-white">4. AList 数据源 (`C:\alist`) 与本地 MPC-HC 播放器</h2>
+            <p class="text-xs text-slate-400">连接本地 AList 挂载的夸克/百度网盘，并通过 `C:\Program Files\MPC-HC\mpc-hc64.exe` 直接播放</p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" onclick="testConnector('alist', 'page-cfg-', 'page-status-alist')"
+                    class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
+              测试 AList
+            </button>
+            <button type="button" onclick="testConnector('player', 'page-cfg-', 'page-status-alist')"
+                    class="px-3.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold transition">
+              验证 MPC-HC
+            </button>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ALIST_URL</label>
+            <input id="page-cfg-ALIST_URL" type="text" value="{{ settings.get('ALIST_URL', 'http://localhost:5244') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ALIST_USERNAME</label>
+            <input id="page-cfg-ALIST_USERNAME" type="text" value="{{ settings.get('ALIST_USERNAME', 'admin') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ALIST_PASSWORD</label>
+            <input id="page-cfg-ALIST_PASSWORD" type="password" value="{{ settings.get('ALIST_PASSWORD', '') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ALIST_SCAN_PATH</label>
+            <input id="page-cfg-ALIST_SCAN_PATH" type="text" value="{{ settings.get('ALIST_SCAN_PATH', '/Quark/来自：分享') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">MPC_HC_PATH</label>
+            <input id="page-cfg-MPC_HC_PATH" type="text" value="{{ settings.get('MPC_HC_PATH', 'C:\\Program Files\\MPC-HC\\mpc-hc64.exe') }}"
+                   class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-white/10 text-xs font-mono text-slate-100" />
+          </div>
+        </div>
+        <div id="page-status-alist" class="text-xs text-slate-400">状态：{{ '✅ AList 已配置' if config_status.alist_ok else '⚠️ 未配置' }}</div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3">
+        <button type="button" onclick="testConnector('all', 'page-cfg-', 'page-status-alist')"
+                class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-bold transition">
+          ⚡ 一键测试全部服务
+        </button>
+        <button type="button" onclick="saveSettingsForm('page-cfg-', false)"
+                class="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold shadow-lg shadow-blue-600/30 transition">
+          💾 保存全部配置
+        </button>
+      </div>
+    </div>
+  </div>
+{% endblock %}

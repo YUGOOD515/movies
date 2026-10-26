@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+{% block title %}后台切换管理中心 · CineVault AList 智影库{% endblock %}
+
+{% block content %}
+  <div class="max-w-[1440px] mx-auto px-4 sm:px-8 py-10 space-y-8">
+    <!-- Top Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-3xl bg-gradient-to-r from-indigo-950/60 via-[#11151f] to-blue-950/60 border border-white/10">
+      <div class="space-y-1">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-bold">
+          <span>⚙️ MVC Admin Controller · 影视与剧集后台切换管理</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-white">剧集与电影后台切换管理中心</h1>
+        <p class="text-xs sm:text-sm text-slate-300">
+          支持切换每部剧集/电影的<strong>专属透明 LOGO</strong>、<strong>自定义标题</strong>、<strong>主页横版轮播展示</strong>、<strong>默认激活季数</strong>、<strong>多网盘片源版本</strong>以及重新匹配 TMDB 元数据。
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+        <button type="button" onclick="openModal('add-media-modal')"
+                class="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-blue-600/30 transition">
+          ＋ 添加影视 / 浏览网盘
+        </button>
+        <button type="button" onclick="triggerBatchScan(this)"
+                class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow-lg shadow-emerald-600/25 transition">
+          🚀 一键扫描 AList 网盘
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 pb-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <button type="button" onclick="filterAdminRows('all', this)"
+                class="admin-filter-btn px-4 py-2 rounded-xl bg-blue-600 text-white text-xs sm:text-sm font-bold transition">
+          全部条目 ({{ all_items|length }})
+        </button>
+        <button type="button" onclick="filterAdminRows('tv', this)"
+                class="admin-filter-btn px-4 py-2 rounded-xl bg-[#11151f] hover:bg-white/10 text-slate-300 text-xs sm:text-sm font-semibold border border-white/10 transition">
+          📺 剧集管理 ({{ tv_items|length }})
+        </button>
+        <button type="button" onclick="filterAdminRows('movie', this)"
+                class="admin-filter-btn px-4 py-2 rounded-xl bg-[#11151f] hover:bg-white/10 text-slate-300 text-xs sm:text-sm font-semibold border border-white/10 transition">
+          🎬 电影管理 ({{ movie_items|length }})
+        </button>
+        <button type="button" onclick="filterAdminRows('featured', this)"
+                class="admin-filter-btn px-4 py-2 rounded-xl bg-[#11151f] hover:bg-white/10 text-slate-300 text-xs sm:text-sm font-semibold border border-white/10 transition">
+          🌟 主页横版海报轮播
+        </button>
+      </div>
+      <div class="text-xs text-slate-400">
+        点击任意剧集或电影右侧的「<strong class="text-white">切换 LOGO / 标题 / 片源</strong>」即可在可视化面板中实时切换
+      </div>
+    </div>
+
+    <!-- Admin Items Grid / Table -->
+    <div class="space-y-4" id="admin-items-container">
+      {% for item in all_items %}
+      <div id="item-{{ item.id }}"
+           data-admin-row
+           data-type="{{ item.media_type }}"
+           data-featured="{{ 'true' if item.is_featured else 'false' }}"
+           class="rounded-2xl bg-[#11151f] border border-white/10 hover:border-white/20 p-4 sm:p-5 transition flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+
+        <!-- Left Visual Preview: Poster + Backdrop + Official Transparent LOGO -->
+        <div class="flex flex-wrap sm:flex-nowrap items-center gap-4 min-w-0 flex-1">
+          <!-- Vertical Poster -->
+          <img src="{{ item.poster_url or item.backdrop_url }}"
+               alt="{{ item.title }}"
+               class="w-16 h-24 object-cover rounded-xl border border-white/10 shrink-0 bg-slate-900" />
+
+          <!-- Horizontal Backdrop + LOGO Overlay Preview -->
+          <div class="relative w-44 h-24 rounded-xl overflow-hidden border border-white/10 bg-slate-950 shrink-0 hidden sm:block">
+            <img src="{{ item.backdrop_url or item.poster_url }}" alt="{{ item.title }} 横版海报" class="w-full h-full object-cover opacity-65" />
+            <div class="absolute inset-0 bg-black/40 flex items-center justify-center p-2">
+              {% if item.logo_url %}
+              <img src="{{ item.logo_url }}" alt="{{ item.title }} LOGO" class="max-h-12 max-w-[140px] object-contain media-logo-img" />
+              {% else %}
+              <span class="text-xs font-bold text-white text-center line-clamp-2">{{ item.title }}</span>
+              {% endif %}
+            </div>
+            <span class="absolute bottom-1 right-1.5 text-[9px] px-1.5 py-0.2 rounded bg-black/70 text-slate-300">LOGO 预览</span>
+          </div>
+
+          <!-- Title, AI Obfuscation Info & Metadata -->
+          <div class="space-y-1.5 min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ 'bg-indigo-600/30 border border-indigo-500/40 text-indigo-300' if item.media_type == 'tv' else 'bg-blue-600/30 border border-blue-500/40 text-blue-300' }}">
+                {{ '📺 剧集' if item.media_type == 'tv' else '🎬 电影' }}
+              </span>
+              <a href="{{ url_for('pages.media_detail', media_id=item.id) }}" class="text-base sm:text-lg font-extrabold text-white hover:text-blue-400 truncate">
+                {{ item.title }}
+              </a>
+              {% if item.year %}
+              <span class="text-xs text-slate-400 font-mono">({{ item.year }})</span>
+              {% endif %}
+              {% if item.ai_obfuscation_type and item.ai_obfuscation_type != '标准命名' %}
+              <span class="px-2 py-0.5 rounded bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[11px] font-semibold">
+                🤖 {{ item.ai_obfuscation_type }}
+              </span>
+              {% endif %}
+            </div>
+
+            <div class="text-xs text-slate-400 font-mono truncate" title="{{ item.alist_path }}">
+              网盘原名: <span class="text-slate-200">{{ item.raw_alist_name }}</span> · AList: {{ item.alist_path }}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <span>TMDB ID: <strong class="text-slate-200">#{{ item.tmdb_id or '未绑定' }}</strong></span>
+              <span>评分: <strong class="text-amber-400">★ {{ "%.1f"|format(item.imdb_rating or item.tmdb_rating or 0.0) }}</strong></span>
+              {% if item.media_type == 'tv' %}
+              <span>季/集: <strong class="text-indigo-300">{{ item.seasons|length }} 季 · {{ item.total_episodes_count }} 集 (默认展示第 {{ item.active_season_number or 1 }} 季)</strong></span>
+              {% endif %}
+              {% if item.alt_sources|length > 1 %}
+              <span class="text-emerald-400">包含 {{ item.alt_sources|length }} 个网盘片源版本</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Quick Toggles & Switch Modal Trigger -->
+        <div class="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-end shrink-0 border-t lg:border-t-0 border-white/5 pt-3 lg:pt-0">
+          <!-- Hero Carousel Toggle -->
+          <button type="button"
+                  onclick="quickToggleMedia({{ item.id }}, {is_featured: {{ 'false' if item.is_featured else 'true' }}})"
+                  class="px-3 py-2 rounded-xl border text-xs font-bold transition {{ 'bg-amber-500/20 border-amber-500/50 text-amber-300' if item.is_featured else 'bg-slate-900 border-white/10 text-slate-400 hover:text-white' }}">
+            {{ '🌟 已在主页横版轮播' if item.is_featured else '☆ 设为主页轮播' }}
+          </button>
+
+          <!-- Visibility Toggle -->
+          <button type="button"
+                  onclick="quickToggleMedia({{ item.id }}, {is_visible: {{ 'false' if item.is_visible else 'true' }}})"
+                  class="px-3 py-2 rounded-xl border text-xs font-semibold transition {{ 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300' if item.is_visible else 'bg-rose-500/20 border-rose-500/40 text-rose-300' }}">
+            {{ '👁️ 前台已上架' if item.is_visible else '🚫 已隐藏' }}
+          </button>
+
+          <!-- Open Switch & Manage Modal -->
+          <button type="button"
+                  onclick='openAdminSwitchModal({{ item.to_dict(include_seasons=True) | tojson }})'
+                  class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/25 transition">
+            🎨 切换 LOGO / 标题 / 季数 / 片源
+          </button>
+
+          <!-- Delete Button -->
+          <button type="button"
+                  onclick="deleteMediaItem({{ item.id }}, '{{ item.title | replace('\'', '\\\'') }}')"
+                  class="px-2.5 py-2 rounded-xl bg-rose-950/60 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs transition"
+                  title="删除条目">
+            🗑️
+          </button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- ADMIN SWITCH & MANAGE MODAL (切换剧集/电影 LOGO、标题、海报、激活季、片源) -->
+  <!-- ===================================================================== -->
+  <div id="admin-switch-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+    <div class="w-full max-w-4xl rounded-2xl bg-[#10141f] border border-white/15 shadow-2xl overflow-hidden my-8">
+      <div class="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-slate-900">
+        <div>
+          <h3 id="adm-modal-heading" class="text-lg font-bold text-white">切换管理影视条目</h3>
+          <p class="text-xs text-slate-400 mt-0.5">可自由切换专属透明 LOGO、横版海报、竖版海报、自定义标题、默认展示季与 AList 网盘片源</p>
+        </div>
+        <button type="button" onclick="closeModal('admin-switch-modal')" class="text-slate-400 hover:text-white text-xl px-2">✕</button>
+      </div>
+
+      <div class="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+        <input type="hidden" id="adm-media-id" />
+
+        <!-- 1. Title, Media Type, Default Season & Quality -->
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-slate-400 mb-1">显示标题 (剧集/电影名字)</label>
+            <input id="adm-title" type="text" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-sm font-bold text-white" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">类型切换</label>
+            <select id="adm-media-type" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs text-slate-200">
+              <option value="tv">📺 剧集 (TV Series)</option>
+              <option value="movie">🎬 电影 (Movie)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">默认展示季数 (剧集)</label>
+            <input id="adm-active-season" type="number" min="1" max="30" class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs text-slate-200" />
+          </div>
+        </div>
+
+        <!-- 2. Official Transparent LOGO Switcher (剧集/电影专属 LOGO 切换) -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-white">🎨 专属透明 LOGO 切换 (点击下方候选 LOGO 即可切换，或输入自定义 URL)</label>
+          </div>
+          <input id="adm-logo-url" type="text" placeholder="https://image.tmdb.org/t/p/w500/..."
+                 class="w-full px-3 py-2 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-200" />
+          <div id="adm-alt-logos-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1"></div>
+        </div>
+
+        <!-- 3. Widescreen Backdrop & Vertical Poster Switcher -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-2.5">
+            <label class="block text-xs font-bold text-white">🖼️ 主页横版大型海报 (Backdrop URL)</label>
+            <input id="adm-backdrop-url" type="text" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-200" />
+            <div id="adm-alt-backdrops-grid" class="grid grid-cols-3 gap-2 pt-1"></div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-2.5">
+            <label class="block text-xs font-bold text-white">🎴 竖版主海报 (Poster URL)</label>
+            <input id="adm-poster-url" type="text" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-200" />
+            <div id="adm-alt-posters-grid" class="grid grid-cols-4 gap-2 pt-1"></div>
+          </div>
+        </div>
+
+        <!-- 4. AList Source Path Switcher -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-white/10 space-y-2.5">
+          <label class="block text-xs font-bold text-white">📂 AList 网盘片源路径切换 (当网盘存在多版本/多目录时可一键切换)</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <span class="text-[11px] text-slate-400">主目录路径 (alist_path):</span>
+              <input id="adm-alist-path" type="text" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-200 mt-0.5" />
+            </div>
+            <div>
+              <span class="text-[11px] text-slate-400">默认播放视频文件 (video_path):</span>
+              <input id="adm-video-path" type="text" class="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-white/10 text-xs font-mono text-slate-200 mt-0.5" />
+            </div>
+          </div>
+          <div id="adm-alt-sources-list" class="flex flex-wrap gap-2 pt-1"></div>
+        </div>
+
+        <!-- 5. Re-match TMDB Metadata -->
+        <div class="p-4 rounded-xl bg-indigo-950/30 border border-indigo-500/30 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 class="text-xs font-bold text-indigo-200">🔄 重新搜索并切换 TMDB 绑定条目</h4>
+              <p class="text-[11px] text-slate-400">如果希望将此网盘资源切换为另一部电影/剧集的元数据，可在此搜索并一键重刮</p>
+            </div>
+            <div class="flex gap-2">
+              <input id="adm-rematch-query" type="text" placeholder="输入片名搜索 TMDB..."
+                     class="px-3 py-1.5 rounded-lg bg-slate-950 border border-white/10 text-xs text-white" />
+              <button type="button" onclick="searchTmdbForAdminRematch()"
+                      class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0">
+                搜索 TMDB
+              </button>
+            </div>
+          </div>
+          <div id="adm-rematch-results" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 border-t border-white/10 bg-slate-950 flex items-center justify-end gap-3">
+        <button type="button" onclick="closeModal('admin-switch-modal')" class="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-medium">
+          取消
+        </button>
+        <button type="button" onclick="saveAdminModalChanges()"
+                class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-lg shadow-blue-600/30 transition">
+          💾 保存切换配置
+        </button>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function filterAdminRows(filterType, btnEl) {
+    document.querySelectorAll(".admin-filter-btn").forEach(b => {
+      b.className = "admin-filter-btn px-4 py-2 rounded-xl bg-[#11151f] hover:bg-white/10 text-slate-300 text-xs sm:text-sm font-semibold border border-white/10 transition";
+    });
+    if (btnEl) {
+      btnEl.className = "admin-filter-btn px-4 py-2 rounded-xl bg-blue-600 text-white text-xs sm:text-sm font-bold transition";
+    }
+    document.querySelectorAll("[data-admin-row]").forEach(row => {
+      const mType = row.getAttribute("data-type");
+      const isFeat = row.getAttribute("data-featured") === "true";
+      if (filterType === "all") {
+        row.classList.remove("hidden");
+      } else if (filterType === "featured") {
+        row.classList.toggle("hidden", !isFeat);
+      } else {
+        row.classList.toggle("hidden", mType !== filterType);
+      }
+    });
+  }
+
+  async function quickToggleMedia(mediaId, payload) {
+    try {
+      const resp = await fetch(`/api/admin/media/${mediaId}/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "更新失败");
+      showToast(data.message, "success", 2000);
+      setTimeout(() => window.location.reload(), 400);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  function openAdminSwitchModal(item) {
+    document.getElementById("adm-media-id").value = item.id;
+    document.getElementById("adm-modal-heading").textContent = `切换管理：《${item.title}》`;
+    document.getElementById("adm-title").value = item.title || "";
+    document.getElementById("adm-media-type").value = item.media_type || "movie";
+    document.getElementById("adm-active-season").value = item.active_season_number || 1;
+    document.getElementById("adm-logo-url").value = item.logo_url || "";
+    document.getElementById("adm-backdrop-url").value = item.backdrop_url || "";
+    document.getElementById("adm-poster-url").value = item.poster_url || "";
+    document.getElementById("adm-alist-path").value = item.alist_path || "";
+    document.getElementById("adm-video-path").value = item.video_path || "";
+    document.getElementById("adm-rematch-query").value = item.title || "";
+    document.getElementById("adm-rematch-results").innerHTML = "";
+
+    // Render alternative logos gallery
+    const logosGrid = document.getElementById("adm-alt-logos-grid");
+    const logos = item.alt_logos || (item.logo_url ? [item.logo_url] : []);
+    logosGrid.innerHTML = logos.length
+      ? logos.map(u => `
+          <div onclick="document.getElementById('adm-logo-url').value='${u}'"
+               class="p-2.5 rounded-xl bg-slate-950 border border-white/10 hover:border-blue-400 cursor-pointer flex items-center justify-center h-16">
+            <img src="${u}" class="max-h-12 max-w-full object-contain media-logo-img" />
+          </div>
+        `).join("")
+      : `<div class="col-span-full text-xs text-slate-500">暂无候选图片，可在上方直接粘贴自定义透明 PNG LOGO 链接</div>`;
+
+    // Render alternative backdrops
+    const backdropsGrid = document.getElementById("adm-alt-backdrops-grid");
+    const backdrops = item.alt_backdrops || (item.backdrop_url ? [item.backdrop_url] : []);
+    backdropsGrid.innerHTML = backdrops.slice(0, 6).map(u => `
+      <img src="${u}" onclick="document.getElementById('adm-backdrop-url').value='${u}'"
+           class="w-full aspect-video object-cover rounded-lg border border-white/10 hover:border-blue-400 cursor-pointer" />
+    `).join("");
+
+    // Render alternative posters
+    const postersGrid = document.getElementById("adm-alt-posters-grid");
+    const posters = item.alt_posters || (item.poster_url ? [item.poster_url] : []);
+    postersGrid.innerHTML = posters.slice(0, 8).map(u => `
+      <img src="${u}" onclick="document.getElementById('adm-poster-url').value='${u}'"
+           class="w-full aspect-[2/3] object-cover rounded-lg border border-white/10 hover:border-blue-400 cursor-pointer" />
+    `).join("");
+
+    // Render alternative AList sources
+    const sourcesList = document.getElementById("adm-alt-sources-list");
+    const sources = item.alt_sources || [];
+    sourcesList.innerHTML = sources.map(s => `
+      <button type="button"
+              onclick="document.getElementById('adm-alist-path').value='${(s.alist_path || '').replace(/'/g, "\\'")}'; document.getElementById('adm-video-path').value='${(s.video_path || '').replace(/'/g, "\\'")}';"
+              class="px-3 py-1 rounded-lg bg-slate-950 hover:bg-blue-600/20 border border-white/10 hover:border-blue-400 text-xs text-slate-200">
+        📂 ${s.raw_name} (${s.quality_badge || '4K'})
+      </button>
+    `).join("");
+
+    openModal("admin-switch-modal");
+  }
+
+  async function saveAdminModalChanges() {
+    const mediaId = document.getElementById("adm-media-id").value;
+    const payload = {
+      title: document.getElementById("adm-title").value,
+      media_type: document.getElementById("adm-media-type").value,
+      active_season_number: document.getElementById("adm-active-season").value,
+      logo_url: document.getElementById("adm-logo-url").value,
+      backdrop_url: document.getElementById("adm-backdrop-url").value,
+      poster_url: document.getElementById("adm-poster-url").value,
+      alist_path: document.getElementById("adm-alist-path").value,
+      video_path: document.getElementById("adm-video-path").value,
+    };
+    try {
+      const resp = await fetch(`/api/admin/media/${mediaId}/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "保存失败");
+      showToast(data.message, "success");
+      closeModal("admin-switch-modal");
+      setTimeout(() => window.location.reload(), 500);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function searchTmdbForAdminRematch() {
+    const q = document.getElementById("adm-rematch-query").value.trim();
+    const container = document.getElementById("adm-rematch-results");
+    if (!q) return;
+    container.innerHTML = `<div class="text-xs text-slate-400 animate-pulse">正在搜索 TMDB...</div>`;
+    try {
+      const resp = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`);
+      const data = await resp.json();
+      const results = data.results || [];
+      container.innerHTML = results.slice(0, 6).map(r => `
+        <div class="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-950 border border-white/10">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <img src="${r.poster_url || ''}" class="w-9 h-12 object-cover rounded bg-slate-800 shrink-0" />
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-white truncate">${r.title} (${r.year})</div>
+              <div class="text-[11px] text-slate-400">${r.media_type === 'tv' ? '📺 剧集' : '🎬 电影'} · ★ ${r.rating} · #${r.tmdb_id}</div>
+            </div>
+          </div>
+          <button type="button" onclick="executeAdminRematch(${r.tmdb_id}, '${r.media_type}')"
+                  class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shrink-0">
+            切换为此条目
+          </button>
+        </div>
+      `).join("");
+    } catch (err) {
+      container.innerHTML = `<div class="text-xs text-rose-400">${err.message}</div>`;
+    }
+  }
+
+  async function executeAdminRematch(tmdbId, mediaType) {
+    const mediaId = document.getElementById("adm-media-id").value;
+    showToast("正在重新拉取海报、LOGO、分季海报与分集剧照...", "info", 4000);
+    try {
+      const resp = await fetch(`/api/admin/media/${mediaId}/rematch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tmdb_id: tmdbId, media_type: mediaType }),
+      });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "重匹配失败");
+      showToast(data.message, "success");
+      setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function deleteMediaItem(mediaId, title) {
+    if (!confirm(`确定要从影视库移除《${title}》吗？（不会删除 AList 网盘原文件）`)) return;
+    try {
+      const resp = await fetch(`/api/admin/media/${mediaId}`, { method: "DELETE" });
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || "删除失败");
+      showToast(data.message, "success");
+      document.getElementById(`item-${mediaId}`)?.remove();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+</script>
+{% endblock %}
