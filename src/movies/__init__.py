@@ -44,7 +44,13 @@ def create_app(test_config: dict | None = None) -> Flask:
 
 def main() -> None:
     """Entrypoint for `uv run movies`."""
+    import sys
+
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     app = create_app()
     port = int(os.getenv("FLASK_PORT", "5000"))
-    print(f"🎬 CineVault AList 影视媒体库已启动: http://127.0.0.1:{port}")
+    print(f"[CineVault] AList Media Center running at: http://127.0.0.1:{port}")
     app.run(host="0.0.0.0", port=port, debug=False)
